@@ -1,0 +1,35 @@
+@title-height: 30px;
+//@message-height: 60px;
+
+.result-view {
+    .title {
+        width: 100%;
+        height: @title-height;
+        padding: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .result {
+        width: 100%;
+        height: calc(~"100%" - @title-height);
+        overflow: auto;
+
+        .current, .expected {
+            width: 100%;
+        }
+    }
+
+    // .message {
+    //     width: 100%;
+    //     height: @message-height;
+    //     border-top: 1px solid #eee;
+    //     border-left: none;
+    //     outline: none;
+    //     resize: none;
+    //     word-wrap: break-word;
+    //     overflow-x: hidden;
+    //     overflow-y: auto;
+    // }
+}

@@ -1,0 +1,37 @@
+.toolbar {
+    border-bottom: 1px solid #eee;
+
+    .btn {
+        font-size: 22px;
+        margin-right: 30px;
+        position: relative;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background-color: transparent;
+        outline: none;
+        cursor: pointer;
+        float: right;
+
+        &:hover {
+            opacity: 0.6;
+        }
+    
+
+        &.toggle-btn {
+            float: left;
+        }
+    }
+
+    .run-btn {
+        &:after {
+            content: "";
+            display: block;
+            border-left: 10px solid #000;
+            border-bottom: 10px solid transparent;
+            border-top: 10px solid transparent;
+            width: 0;
+            height: 0;
+        }
+    }
+}

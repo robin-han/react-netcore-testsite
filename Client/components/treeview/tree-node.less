@@ -1,0 +1,33 @@
+.tree-node {
+    .tree-node-item {
+        margin: 6px;
+
+        .expand-button {
+            display: inline-block;
+            cursor: pointer;
+            margin: 0 6px 0 3px;
+            font-size: 0.8em;
+        }
+
+        .image-and-text {
+            display: inline-block;
+        }
+    }
+
+    .tree-node-children {
+        display: block;
+        margin-left: 16px;
+    }
+
+    &.leaf {
+        cursor: pointer;
+        font-size: 0.85em;
+    }
+
+    
+    &.collapsed {
+        .tree-node-children {
+            display: none;
+        }
+    }
+}

@@ -1,0 +1,149 @@
+@import './normalize.less';
+@import './icon.less';
+
+@sidebar-width: 280px;
+@code-view-width: 420px;
+@toolbar-height: 44px;
+
+html,
+body {
+  height: 100%;
+  width:100%;
+  overflow: hidden;
+}
+* {
+  box-sizing: border-box;
+}
+
+
+::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+}
+::-webkit-scrollbar-track {
+    -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+    border-radius: 9px;
+}
+::-webkit-scrollbar-thumb {
+    border-radius: 9px;
+    background: #bbb;
+    -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.5);
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.5);
+}
+
+#root {
+    position: relative;
+    height: 100%;
+    font-family: monospace;
+
+    .sidebar {
+        position: absolute;
+        height: 100%;
+        width: @sidebar-width;
+        font-size: 15px;
+
+        // theme
+        background-color: #263238;
+        color: #80CBC4;
+        .tree-node.leaf {
+            color: #C3E88D;
+            &.active {
+                color: #fff;
+            }
+        }
+    }
+
+    .code-view {
+        position: absolute;
+        width: @code-view-width;
+        bottom: 0;
+        top: 0;
+        overflow: auto;
+        border-right: 1px solid #aaa;
+
+        .react-codemirror2 {
+            height: 100%;
+            .CodeMirror {
+                height: 100%;
+            }
+        }
+    }
+
+    .test-view {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+
+        .toolbar {
+            height: @toolbar-height;
+        }
+
+        .result-view {
+            height: calc(~"100%" - @toolbar-height);
+        }
+    }
+}
+
+
+@media (min-width: 1024px) {
+    .sidebar {
+        display: block;
+    }
+  
+    .code-view {
+      left: @sidebar-width;
+    }
+
+    .test-view {
+        left: @sidebar-width + @code-view-width;
+    }
+
+    .toolbar {
+        .toggle-btn {
+            display: none;
+        }
+    }
+
+    .testing  {
+        .code-view {
+            visibility: hidden;
+        }
+        .test-view {
+            left: @sidebar-width;
+        }
+    }
+  }
+  @media (max-width: 1023px) {
+    .sidebar {
+        display: none;
+        &.toggled {
+            z-index: 1000;
+            display: block;
+        }
+    }
+  
+    .code-view {
+        left: 0;
+    }
+
+    .test-view {
+        left: @code-view-width;
+    }
+
+    .toolbar {
+        .toggle-btn {
+            display: block;
+        }
+    }
+
+    .testing {
+        .code-view {
+            visibility: hidden;
+        }
+        .test-view {
+            left: 0;
+        }
+    }
+}
