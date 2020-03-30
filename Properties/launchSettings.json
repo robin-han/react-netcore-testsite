@@ -12,7 +12,7 @@
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
-      "launchUrl": "api/values",
+      "launchUrl": "",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -20,7 +20,7 @@
     "GrapeCity.DataVisualization.Chart.TestSite": {
       "commandName": "Project",
       "launchBrowser": true,
-      "launchUrl": "api/testcase",
+      "launchUrl": "",
       "applicationUrl": "http://localhost:7021",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"

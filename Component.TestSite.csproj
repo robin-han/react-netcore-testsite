@@ -5,12 +5,27 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Component_Build\**" />
+    <Compile Remove="Component_LastBuild\**" />
+    <Content Remove="Component_Build\**" />
+    <Content Remove="Component_LastBuild\**" />
+    <EmbeddedResource Remove="Component_Build\**" />
+    <EmbeddedResource Remove="Component_LastBuild\**" />
+    <None Remove="Component_Build\**" />
+    <None Remove="Component_LastBuild\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="GrapeCity.Documents.Imaging" Version="3.0.0.420" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.AspNetCore.Razor.Design" Version="2.1.2" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
+    <PackageReference Include="SkiaSharp" Version="1.68.0" />
   </ItemGroup>
 
 </Project>
