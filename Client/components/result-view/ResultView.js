@@ -14,18 +14,26 @@ class ResultView extends Component {
             console.log(message);
         }
 
+        const isSvg = (result && result.startsWith('<svg'));
+        const isImage = (result && result.startsWith('data:image'));
+        let currentResult = result;
+        let expectedResult = expected;
+        if (isSvg) {
+            currentResult = (<div dangerouslySetInnerHTML={{ __html: result }}></div>);
+            expectedResult = expected ? (<div dangerouslySetInnerHTML={{ __html: expected }}></div>) : '';
+        } else if (isImage) {
+            currentResult = (<img src={result} />);
+            expectedResult = expected ? (<img src={expected} />) : '';
+        }
+
         return (
             <div className="result-view">
                 <div className="title" title={title}>
                     <span>{title}</span>
                 </div>
                 <div className="result">
-                    <div className="current"
-                        dangerouslySetInnerHTML={{ __html: result }}>
-                    </div>
-                    <div className="expected"
-                        dangerouslySetInnerHTML={{ __html: expected }}>
-                    </div>
+                    <div className="current">{currentResult}</div>
+                    <div className="expected">{expectedResult}</div>
                 </div>
                 {/* <textarea className="message" value={message}></textarea> */}
             </div>

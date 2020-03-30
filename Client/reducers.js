@@ -5,7 +5,6 @@ import {
     BATCH_TEST_START,
     BATCH_TEST_RUNNING,
     BATCH_TEST_END,
-    UPDATE_TEST,
     RUN_TEST,
     REFRESH_TEST
 } from './actions';
@@ -21,10 +20,6 @@ function rootReducer(state = { tests: {}, groups: [], testIds: [], result: {} },
         case BATCH_TEST_START:
         case BATCH_TEST_RUNNING:
         case BATCH_TEST_END:
-        {
-            return update(state, { result: { $set: action.result } });
-        }
-        case UPDATE_TEST:
         {
             return update(state, { result: { $set: action.result } });
         }

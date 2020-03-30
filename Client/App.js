@@ -12,7 +12,6 @@ import 'codemirror/mode/javascript/javascript.js';
 
 import {
     fetchTestsAction,
-    updateTestAction,
     runTestAction,
     refreshTestAction,
     batchTestStartAction,
@@ -25,7 +24,7 @@ import { TestState, TestResultState } from './enums';
 import TreeView from './components/treeview/TreeView';
 import ResultView from './components/result-view/ResultView';
 import Toolbar from './components/toolbar/Toolbar';
-import { confirmAlert } from './components/confirm/Confirm';
+// import { confirmAlert } from './components/confirm/Confirm';
 
 
 class App extends Component {
@@ -41,14 +40,14 @@ class App extends Component {
         this.handleActiveTestChange = this.handleActiveTestChange.bind(this);
         this.handleRefreshTest = this.handleRefreshTest.bind(this);
         this.handleRunTest = this.handleRunTest.bind(this);
-        this.handleUpdateTest = this.handleUpdateTest.bind(this);
+        // this.handleUpdateTest = this.handleUpdateTest.bind(this);
 
         this._codeText = '';
         this._runningIndex = -1;
     }
 
     handleToggleSidebar() {
-        this.setState({ isTestListToggled: !this.state.isSidebarToggled });
+        this.setState({ isSidebarToggled: !this.state.isSidebarToggled });
     }
 
     handleActiveTestChange(item) {
@@ -60,31 +59,31 @@ class App extends Component {
         runTest(item);
     }
 
-    handleUpdateTest() {
-        if (this.state.testState == TestState.Running) {
-            return;
-        }
+    //handleUpdateTest() {
+    //    if (this.state.testState == TestState.Running) {
+    //        return;
+    //    }
 
-        const { tests, result, updateTest } = this.props;
-        const test = tests[result.testId];
-        if (test) {
-            confirmAlert({
-                title: 'Update Test',
-                message: 'Are you sure to upate test result as expected.',
-                buttons: [
-                    {
-                        label: 'Yes',
-                        onClick: () => updateTest(test)
-                    },
-                    {
-                        label: 'No',
-                        onClick: () => null
-                    }
-                ],
-                closeOnClickOutside: false
-            });
-        }
-    }
+    //    const { tests, result, updateTest } = this.props;
+    //    const test = tests[result.testId];
+    //    if (test) {
+    //        confirmAlert({
+    //            title: 'Update Test',
+    //            message: 'Are you sure to upate test result as expected.',
+    //            buttons: [
+    //                {
+    //                    label: 'Yes',
+    //                    onClick: () => updateTest(test)
+    //                },
+    //                {
+    //                    label: 'No',
+    //                    onClick: () => null
+    //                }
+    //            ],
+    //            closeOnClickOutside: false
+    //        });
+    //    }
+    //}
 
     handleRefreshTest() {
         if (this.state.testState == TestState.Running) {
@@ -96,9 +95,16 @@ class App extends Component {
         if (codeText) {
             const test = tests[result.testId];
 
+            let renderSize = null; // TODO: 
+            const renderContainer = document.getElementsByClassName('current')[0];
+            if (renderContainer && renderContainer.style.width && renderContainer.style.height) {
+                renderSize = { width: parseFloat(renderContainer.style.width), height: parseFloat(renderContainer.style.height) };
+            }
+
             refreshTest({
                 id: (test && test.id),
                 content: codeText,
+                renderSize: renderSize
             });
         }
     }
@@ -134,36 +140,42 @@ class App extends Component {
         const codeText = result.testContent;
         const currentTest = tests[result.testId];
         const resultTitle = currentTest ? `${currentTest.id}/${testIds.length}: ${currentTest.path}` : '';
+        const isTestRunning = testState == TestState.Running;
 
         return (
-            <div className={testState == TestState.Running ? 'app testing' : 'app'}>
-                <aside className={"sidebar" + (isSidebarToggled ? " toggled" : "")}>
-                    <TreeView
-                        items={tests}
-                        groups={groups}
-                        onActiveItemChange={this.handleActiveTestChange}>
-                    </TreeView>
-                </aside>
+            <div className={isTestRunning ? 'app test-running' : 'app'}>
+                {isTestRunning
+                    ? null
+                    : (<aside className={"sidebar" + (isSidebarToggled ? " toggled" : "")}>
+                        <TreeView
+                            items={tests}
+                            groups={groups}
+                            onActiveItemChange={this.handleActiveTestChange}>
+                        </TreeView>
+                    </aside>)
+                }
 
-                <div className="code-view">
-                    <CodeMirror
-                        value={codeText}
-                        options={{
-                            mode: { name: 'javascript', json: true },
-                            theme: 'material',
-                            lineNumbers: true,
-                            readOnly: false
-                        }}
-                        onChange={(editor, data, value) => {
-                            this._codeText = value;
-                        }}>
-                    </CodeMirror>
-                </div>
+                {isTestRunning
+                    ? null
+                    : (<div className="code-view">
+                        <CodeMirror
+                            value={codeText}
+                            options={{
+                                mode: { name: 'javascript', json: true },
+                                theme: 'material',
+                                lineNumbers: true,
+                                readOnly: false
+                            }}
+                            onChange={(editor, data, value) => {
+                                this._codeText = value;
+                            }}>
+                        </CodeMirror>
+                    </div>)
+                }
 
                 <div className="test-view">
                     <Toolbar
                         toggleSidebar={this.handleToggleSidebar}
-                        updateTest={this.handleUpdateTest}
                         runTest={this.handleRunTest}
                         refreshTest={this.handleRefreshTest}>
                     </Toolbar>
@@ -195,7 +207,6 @@ App.propTypes = {
     runBatchTest: PropTypes.func.isRequired,
     endBatchTest: PropTypes.func.isRequired,
 
-    updateTest: PropTypes.func.isRequired,
     runTest: PropTypes.func.isRequired,
     refreshTest: PropTypes.func.isRequired
 }
@@ -213,9 +224,6 @@ function mapDispatchToProps(dispatch) {
     return {
         fetchTests: () => {
             dispatch(fetchTestsAction());
-        },
-        updateTest: (test) => {
-            dispatch(updateTestAction(test));
         },
         runTest: (test) => {
             dispatch(runTestAction(test));

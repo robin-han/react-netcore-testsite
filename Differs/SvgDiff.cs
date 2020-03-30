@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace GrapeCity.DataVisualization.Chart.TestSite
 {
-    public class SvgDiff
+    public class SvgDiff : DiffBase
     {
+        private static readonly List<string> RANDOM_VALUE_ATTR_NAME = new List<string>() { "id", "clip-path", "fill" };
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -25,36 +28,22 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
         {
             if (actual.Name.ToString() != expected.Name.ToString())
             {
-                return this.Error(
-                    string.Format(
-                        "Name\r\nactual: {0}\r\nexpect: {1}",
-                        actual.Name.ToString(),
-                        expected.Name.ToString()),
-                    actual.OuterXml(),
-                    expected.OuterXml());
+                return this.Error(string.Format("Name\r\nactual: {0}\r\nexpect: {1}", actual.Name.ToString(), expected.Name.ToString()), actual.OuterXml(), expected.OuterXml());
             }
 
-            List<XAttribute> actualAttrs = this.FilterAttributes(actual.Attributes().ToList());
-            List<XAttribute> expectedAttrs = this.FilterAttributes(expected.Attributes().ToList());
-            string diffMessage = this.DiffAttributes(actualAttrs, expectedAttrs);
-            if (!string.IsNullOrEmpty(diffMessage))
+            List<XAttribute> actualAttrs = actual.Attributes().ToList();
+            List<XAttribute> expectedAttrs = expected.Attributes().ToList();
+            if (!this.DiffAttributes(actualAttrs, expectedAttrs, out string message))
             {
-                return this.Error(diffMessage, actual.OuterXml(), expected.OuterXml());
+                return this.Error(message, actual.OuterXml(), expected.OuterXml());
             }
 
-            List<XElement> actualChildren = this.FilterElements(actual.Elements().ToList());
-            List<XElement> expectedChildren = this.FilterElements(expected.Elements().ToList());
+            List<XElement> actualChildren = actual.Elements().ToList();
+            List<XElement> expectedChildren = expected.Elements().ToList();
             if (actualChildren.Count != expectedChildren.Count)
             {
-                return this.Error(
-                    string.Format(
-                        "Child Count\r\nactual: {0}\r\nexpect: {1}",
-                        actualChildren.Count,
-                        expectedChildren.Count),
-                    actual.OuterXml(),
-                    expected.OuterXml());
+                return this.Error(string.Format("Child Count\r\nactual: {0}\r\nexpect: {1}", actualChildren.Count, expectedChildren.Count), actual.OuterXml(), expected.OuterXml());
             }
-
             for (int i = 0; i < actualChildren.Count; i++)
             {
                 string diff = this.Diff(actualChildren[i], expectedChildren[i]);
@@ -63,24 +52,7 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
                     return diff;
                 }
             }
-
             return "";
-        }
-
-        /// <summary>
-        /// Format error message.
-        /// </summary>
-        /// <param name="actual">The actual message.</param>
-        /// <param name="expected">The </param>
-        /// <returns></returns>
-        private string Error(string message, string actual, string expected)
-        {
-            return string.Format(
-                "{0}\r\n\r\nActual:\r\n{1}\r\n\r\nExpected:\r\n{2}\r\n------",
-                message,
-                actual,
-                expected
-            );
         }
 
         /// <summary>
@@ -88,60 +60,61 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
         /// </summary>
         /// <param name="attr1">The attribute1.</param>
         /// <param name="attr2">The attribute2.</param>
-        /// <returns>The diff string.</returns>
-        private string DiffAttributes(List<XAttribute> actualAttrs, List<XAttribute> expectedAttrs)
+        /// <returns></returns>
+        private bool DiffAttributes(List<XAttribute> actualAttrs, List<XAttribute> expectedAttrs, out string message)
         {
+            message = string.Empty;
             if (actualAttrs.Count != expectedAttrs.Count)
             {
-                return string.Format(
-                    "Attribute Count\r\nactual: {0}\r\nexpect: {1}",
-                    actualAttrs.Count,
-                    expectedAttrs.Count
-                );
+                message = string.Format("Attribute Count\r\nactual: {0}\r\nexpect: {1}", actualAttrs.Count, expectedAttrs.Count);
+                return false;
             }
-
+            Regex numRegex = new Regex("[0-9]");
             for (int i = 0; i < actualAttrs.Count; i++)
             {
                 XAttribute actual = actualAttrs[i];
                 XAttribute expected = expectedAttrs[i];
+
                 if (actual.Name.ToString() != expected.Name.ToString())
                 {
-                    return string.Format(
-                        "Attribute Name\r\nactual: {0}\r\nexpect: {1}",
-                        actual.Name.ToString(),
-                        expected.Name.ToString()
-                    );
+                    message = string.Format("Attribute Name\r\nactual: {0}\r\nexpect: {1}", actual.Name.ToString(), expected.Name.ToString());
+                    return false;
                 }
 
-                if (actual.Value != expected.Value)
+                string attrName = actual.Name.ToString();
+                string actualAttrValue = actual.Value;
+                string expectedAttrValue = expected.Value;
+                if (RANDOM_VALUE_ATTR_NAME.Contains(attrName))
                 {
-                    return string.Format(
-                        "Attribute Value\r\nactual: {0}\r\nexpect: {1}",
-                        actual.Value,
-                        expected.Value
-                    );
+                    actualAttrValue = numRegex.Replace(actualAttrValue, "");
+                    expectedAttrValue = numRegex.Replace(expectedAttrValue, "");
+                }
+                if (actualAttrValue != expectedAttrValue)
+                {
+                    int pos = this.GetDiffPosition(actual.Value, expected.Value);
+                    message = string.Format("Attribute Value\r\nactual: {0}\r\nexpect: {1}", actual.Value.Substring(pos), expected.Value.Substring(pos));
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private int GetDiffPosition(string text1, string text2)
+        {
+            int length = Math.Min(text1.Length, text2.Length);
+            for (int index = 0; index < length; index++)
+            {
+                if (text1[index] != text2[index])
+                {
+                    return index;
                 }
             }
 
-            return string.Empty;
-        }
-
-        private List<XAttribute> FilterAttributes(List<XAttribute> attrs)
-        {
-            return attrs.Where((att) =>
+            if (length < text1.Length || length < text2.Length)
             {
-                string name = att.Name.ToString();
-                return name != "xmlns" && name != "clip-path";
-            }).ToList();
-        }
-
-        private List<XElement> FilterElements(List<XElement> elems)
-        {
-            return elems.Where((att) =>
-            {
-                string name = att.Name.LocalName;
-                return name != "clipPath";
-            }).ToList();
+                return length;
+            }
+            return -1;
         }
     }
 
@@ -162,5 +135,6 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
             return xReader.ReadInnerXml();
         }
     }
+
 
 }

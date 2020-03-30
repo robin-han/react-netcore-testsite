@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Build\**" />
+    <EmbeddedResource Remove="Build\**" />
+    <None Remove="Build\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GrapeCity.Documents.Imaging" Version="3.0.0.420" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.5.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
+    <PackageReference Include="SkiaSharp" Version="1.68.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="GrapeCity.DataVisualization.Chart">
+      <HintPath>Lib\Component.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

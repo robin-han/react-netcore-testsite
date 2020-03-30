@@ -5,7 +5,6 @@ export const RECEIVE_TESTS = 'RECEIVE_TESTS';
 export const BATCH_TEST_START = 'BATCH_TEST_START';
 export const BATCH_TEST_RUNNING = 'BATCH_TEST_RUNNING';
 export const BATCH_TEST_END = 'BATCH_TEST_END';
-export const UPDATE_TEST = 'UPDATE_TEST';
 export const RUN_TEST = 'RUN_TEST';
 export const REFRESH_TEST = 'REFRESH_TEST';
 
@@ -34,13 +33,6 @@ export function batchTestEndAction() {
     return {
         type: BATCH_TEST_END,
         result: { result: 'Finish!!!' }
-    }
-}
-
-function _updateTestAction(result) {
-    return {
-        type: UPDATE_TEST,
-        result: result
     }
 }
 
@@ -85,23 +77,6 @@ export function runBatchTestAction(test) {
             });
 
         dispatch(batchTestRunningAction(result));
-    };
-}
-
-export function updateTestAction(test) {
-    return async dispatch => {
-        let result = await fetch('http://localhost:7021/api/test/save/' + test.id,
-            {
-                method: "PUT"
-            })
-            .then((response) => {
-                return response.json();
-            })
-            .then((json) => {
-                return json;
-            });
-
-        dispatch(_updateTestAction(result));
     };
 }
 

@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using GrapeCity.Documents.Imaging;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GrapeCity.DataVisualization.Chart.TestSite
@@ -12,6 +14,8 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
     [ApiController]
     public class TestController : ControllerBase
     {
+        private RenderEngineType _renderType = RenderEngineType.Svg;
+
         public TestController()
         {
         }
@@ -64,39 +68,27 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
                 return BadRequest();
             }
 
-            string json = test.Content;
-            if (string.IsNullOrEmpty(json))
+            string dvJson = test.Content;
+            if (string.IsNullOrEmpty(dvJson))
             {
-                json = await this.ReadTestContent(test.Path);
+                dvJson = await this.ReadTestContent(test.Path);
             }
 
-            return await Task.Run<ActionResult<TestResult>>((Func<Task<ActionResult<TestResult>>>)(async () =>
+            return await Task.Run<ActionResult<TestResult>>(() =>
             {
-                string expectedSvgText = "";
                 try
                 {
-                    XElement componentSvg = this.RenderComponent(json);
-                    string diff = "No Expected";
-                    expectedSvgText = await this.ReadRenderResult(test.Path);
-                    if (!string.IsNullOrEmpty(expectedSvgText))
-                    {
-                        using (StringReader reader = new StringReader(expectedSvgText))
-                        {
-                            XElement expectedSvg = XElement.Load(reader);
-                            diff = new SvgDiff().Diff(componentSvg, expectedSvg);
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(diff))
+                    var result = this.RenderAndDiff(dvJson);
+                    if (!string.IsNullOrEmpty(result.Diff))
                     {
                         return new TestResult()
                         {
                             TestId = test.Id,
-                            TestContent = json,
+                            TestContent = dvJson,
                             State = TestResultState.Failure,
-                            Result = componentSvg.ToString(),
-                            Expected = expectedSvgText,
-                            Message = diff,
+                            Result = result.Actual,
+                            Expected = result.Expected,
+                            Message = result.Diff
                         };
                     }
 
@@ -104,7 +96,7 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
                     {
                         TestId = test.Id,
                         State = TestResultState.Success,
-                        Result = componentSvg.ToString(),
+                        Result = result.Actual
                     };
                 }
                 catch (Exception ex)
@@ -112,32 +104,12 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
                     return new TestResult()
                     {
                         TestId = test.Id,
-                        TestContent = json,
-                        Expected = expectedSvgText,
+                        TestContent = dvJson,
                         Message = string.Format("{0}:\r\n{1}", test.Path, this.GetExceptionMessage(ex)),
                         State = TestResultState.Error
                     };
                 }
-            }));
-        }
-
-        /// <summary>
-        /// Run test and save test result.
-        /// </summary>
-        /// <param name="id">The test id.</param>
-        /// <returns>The test result.</returns>
-        //PUT api/test/save/5
-        [HttpPut("save/{id}")]
-        public async Task<ActionResult<TestResult>> RunAndSaveTest(long id)
-        {
-            TestResult testResult = (await this.RunTest(id)).Value;
-            if (testResult.State == TestResultState.Success)
-            {
-                Test test = Tests.Find(item => item.Id == id);
-                this.WriteRenderResult(test.Path, testResult.Result);
-            }
-
-            return testResult;
+            });
         }
 
         /// <summary>
@@ -156,22 +128,22 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
                 return BadRequest();
             }
 
-            string json = test.Content;
-            if (string.IsNullOrEmpty(json))
+            string dvJson = test.Content;
+            if (string.IsNullOrEmpty(dvJson))
             {
-                json = await this.ReadTestContent(test.Path);
+                dvJson = await this.ReadTestContent(test.Path);
             }
 
-            return await Task.Run<ActionResult<TestResult>>((Func<ActionResult<TestResult>>)(() =>
+            return await Task.Run<ActionResult<TestResult>>(() =>
             {
                 try
                 {
-                    XElement componentSvg = this.RenderComponent(json);
+                    string result = this.Render(dvJson);
                     return new TestResult()
                     {
                         TestId = test.Id,
-                        TestContent = json,
-                        Result = componentSvg.ToString(),
+                        TestContent = dvJson,
+                        Result = result,
                         State = TestResultState.Success
                     };
                 }
@@ -180,12 +152,12 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
                     return new TestResult()
                     {
                         TestId = test.Id,
-                        TestContent = json,
+                        TestContent = dvJson,
                         Message = string.Format("{0}:\r\n{1}", test.Path, this.GetExceptionMessage(ex)),
                         State = TestResultState.Error
                     };
                 }
-            }));
+            });
         }
 
         /// <summary>
@@ -197,22 +169,22 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
         [HttpPut()]
         public async Task<ActionResult<TestResult>> RefreshTest([FromBody] Test test)
         {
-            string json = test.Content;
-            if (string.IsNullOrEmpty(json))
+            string dvJson = test.Content;
+            if (string.IsNullOrEmpty(dvJson))
             {
                 return BadRequest();
             }
 
-            return await Task.Run<ActionResult<TestResult>>((Func<ActionResult<TestResult>>)(() =>
+            return await Task.Run<ActionResult<TestResult>>(() =>
             {
                 try
                 {
-                    XElement componentSvg = this.RenderComponent(json);
+                    string result = this.Render(dvJson);
                     return new TestResult()
                     {
                         TestId = test.Id,
                         TestContent = test.Content,
-                        Result = componentSvg.ToString(),
+                        Result = result,
                         State = TestResultState.Success
                     };
                 }
@@ -226,7 +198,7 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
                         Message = this.GetExceptionMessage(ex)
                     };
                 }
-            }));
+            });
         }
 
         /// <summary>
@@ -236,7 +208,7 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
         /// <returns>The test content.</returns>
         private async Task<string> ReadTestContent(string path)
         {
-            path = Path.Combine("App_Data", path);
+            path = System.IO.Path.Combine("App_Data", path);
             if (System.IO.File.Exists(path))
             {
                 using (StreamReader reader = new StreamReader(path))
@@ -244,58 +216,119 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
                     return await reader.ReadToEndAsync();
                 }
             }
-
             return "";
         }
 
+        private string Render(string dvJson)
+        {
+            string result = string.Empty;
+            switch (this._renderType)
+            {
+                case RenderEngineType.Svg:
+                    //SvgRender svgRender = new SvgRender();
+                    //XElement dvSvg = svgRender.Draw(dvJson);
+                     // TODO:
+                    XElement dvSvg = this.RenderToSvg("", null);
+                    result = dvSvg.ToString();
+                    break;
+
+                case RenderEngineType.Imaging:
+                    //GcImageRender imgRender = new GcImageRender();
+                    //GcBitmap dvImg = imgRender.Draw(dvJson);
+                    //using (MemoryStream memory = new MemoryStream())
+                    //{
+                    //    dvImg.SaveAsPng(memory);
+                    //    result = "data:image/png;base64," + System.Convert.ToBase64String(memory.ToArray());
+                    //    dvImg.Dispose();
+                    //}
+                    break;
+            }
+            return result;
+        }
+
         /// <summary>
-        /// Read expected test result.
+        /// Render dv chart and compare with its prev version.
         /// </summary>
-        /// <param name="path">The test path.</param>
+        /// <param name="dvJson"></param>
         /// <returns></returns>
-        private async Task<string> ReadRenderResult(string path)
+        private (string Actual, string Expected, string Diff) RenderAndDiff(string dvJson)
         {
-            path = Path.Combine("App_Result", path.Replace(".json", ".svg"));
-            if (System.IO.File.Exists(path))
+            (string Actual, string Expected, string Diff) result = ("", "", "");
+            switch (this._renderType)
             {
-                using (StreamReader reader = new StreamReader(path))
-                {
-                    return await reader.ReadToEndAsync();
-                }
-            }
+                case RenderEngineType.Svg:
+                    XElement expectedSvg = this.RenderToSvg(dvJson, LastVersion);
+                    XElement actualSvg = this.RenderToSvg(dvJson, CurrentVersion);
+                    string svgDiffResult = new SvgDiff().Diff(actualSvg, expectedSvg);
 
-            return "";
+                    result.Actual = actualSvg.ToString();
+                    if (!string.IsNullOrEmpty(svgDiffResult))
+                    {
+                        result.Expected = expectedSvg.ToString();
+                        result.Diff = svgDiffResult;
+                    }
+                    break;
+
+                case RenderEngineType.Imaging:
+                    GcBitmap expectedImg = this.RenderToImage(dvJson, LastVersion);
+                    GcBitmap actualImg = this.RenderToImage(dvJson, CurrentVersion);
+                    string imgDiffResult = new ImageDiff().Diff(actualImg, expectedImg);
+
+                    result.Actual = this.GetBase64String(actualImg);
+                    if (!string.IsNullOrEmpty(imgDiffResult))
+                    {
+                        result.Expected = this.GetBase64String(expectedImg);
+                        result.Diff = imgDiffResult;
+                    }
+                    break;
+            }
+            return result;
         }
 
         /// <summary>
-        ///  Write expected test result.
+        /// Get GcBitmap's base64 string.
         /// </summary>
-        /// <param name="path">The test path.</param>
-        /// <param name="content">The test result.</param>
-        private void WriteRenderResult(string path, string content)
+        /// <param name="img"></param>
+        /// <returns></returns>
+        private string GetBase64String(GcBitmap img)
         {
-            string resultPath = Path.Combine("App_Result", path.Replace(".json", ".svg"));
-            if (!Directory.Exists(Path.GetDirectoryName(resultPath)))
+            using (MemoryStream memory = new MemoryStream())
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(resultPath));
-            }
-
-            using (StreamWriter writer = new StreamWriter(resultPath))
-            {
-                writer.Write(content);
+                img.SaveAsPng(memory);
+                return "data:image/png;base64," + System.Convert.ToBase64String(memory.ToArray());
             }
         }
 
         /// <summary>
-        /// Render componnet.
+        /// Render dv.
         /// </summary>
-        /// <param name="json">The component json</param>
-        /// <returns>Component svg element</returns>
-        private XElement RenderComponent(string json)
+        /// <param name="dvJson">The dv chart json.</param>
+        /// <param name="renderAssembly">The dv chart render assembly.</param>
+        /// <returns>Rendered dv chart on img element</returns>
+        private GcBitmap RenderToImage(string dvJson, Assembly renderAssembly)
         {
-            // TODO:
+            var type = renderAssembly.GetType("GrapeCity.DataVisualization.Render.Imaging.GcImageRender");
+            var instance = Activator.CreateInstance(type);
+            var drawMethod = type.GetMethod("Draw", new Type[] { typeof(string) });
+            var result = drawMethod.Invoke(instance, new object[] { dvJson });
+            return (GcBitmap)result;
+        }
+
+        /// <summary>
+        /// Render dv.
+        /// </summary>
+        /// <param name="dvJson">The dv chart json.</param>
+        /// <param name="renderAssembly">The dv chart render assembly.</param>
+        /// <returns>Rendered dv chart on svg element</returns>
+        private XElement RenderToSvg(string dvJson, Assembly renderAssembly)
+        {
+            //var type = renderAssembly.GetType("GrapeCity.DataVisualization.Render.Svg.SvgRender");
+            //var instance = Activator.CreateInstance(type);
+            //var drawMethod = type.GetMethod("Draw", new Type[] { typeof(string) });
+            //var result = drawMethod.Invoke(instance, new object[] { dvJson });
+            //return (XElement)result;
             string str =
-            @"<svg width=""600"" height=""300"" version=""1.1"" xmlns=""http://www.w3.org/2000/svg"">
+           @"<svg width=""600"" height=""300"" version=""1.1"" xmlns=""http://www.w3.org/2000/svg"">
                 <g stroke=""black"">
                     <line x1=""75"" y1=""160"" x2=""525"" y2=""160"" stroke=""lightgreen"" stroke-width=""10""/>
                 </g>
@@ -318,6 +351,7 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
             return string.Format("Message:\r\n{0}StackTrace:\r\n{1}", ex.Message, ex.StackTrace);
         }
 
+        #region Static Methods
         private static List<Test> tests;
         /// <summary>
         /// Gets all tests.
@@ -330,25 +364,62 @@ namespace GrapeCity.DataVisualization.Chart.TestSite
                 {
                     return tests;
                 }
-
                 tests = new List<Test>();
-                string casesDir = Path.Combine(Directory.GetCurrentDirectory(), "App_Data");
+                string casesDir = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "App_Data");
                 string[] files = Directory.GetFiles(casesDir, "*.json", SearchOption.AllDirectories);
                 for (int i = 0; i < files.Length; i++)
                 {
                     Test testCase = new Test()
                     {
                         Id = i + 1,
-                        Name = Path.GetFileNameWithoutExtension(files[i]),
-                        Path = Path.GetRelativePath(casesDir, files[i]).Replace("\\", "/"),
+                        Name = System.IO.Path.GetFileNameWithoutExtension(files[i]),
+                        Path = System.IO.Path.GetRelativePath(casesDir, files[i]).Replace("\\", "/"),
                         //Content = System.IO.File.ReadAllText(files[i])
                     };
                     tests.Add(testCase);
                 }
-
                 return tests;
             }
         }
+
+
+        private static Assembly lastVersion;
+        /// <summary>
+        /// Get dv chart render's last version assembly.
+        /// </summary>
+        private static Assembly LastVersion
+        {
+            get
+            {
+                if (lastVersion == null)
+                {
+                    string assemblyPath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), @"Chart_LastBuild/bin/Debug/netstandard2.0/GrapeCity.DataVisualization.Render.dll");
+                    AssemblyLoader assemblyLoader = new AssemblyLoader(assemblyPath);
+                    lastVersion = assemblyLoader.Load();
+                }
+                return lastVersion;
+            }
+        }
+
+        private static Assembly currentVersion;
+        /// <summary>
+        /// Get dv chart render's current version assembly.
+        /// </summary>
+        private static Assembly CurrentVersion
+        {
+            get
+            {
+                if (currentVersion == null)
+                {
+                    string assemblyPath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), @"Chart_Build/bin/Debug/netstandard2.0/GrapeCity.DataVisualization.Render.dll");
+                    AssemblyLoader assemblyLoader = new AssemblyLoader(assemblyPath);
+                    currentVersion = assemblyLoader.Load();
+                }
+                return currentVersion;
+            }
+        }
+        #endregion
+
 
     }
 }
